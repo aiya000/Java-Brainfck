@@ -1,9 +1,14 @@
 import java.util.List;
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import java.io.FileInputStream;
 import java.io.BufferedInputStream;
 import java.io.IOException;
+
+/*
+ * multiple loop not implemented.
+ */
 
 
 public class Main {
@@ -56,9 +61,10 @@ class BrainFcker {
 
 	private List<Byte> memory = new ArrayList<>();
 	private int pointer = 0;
-	private List<List<Character>> looper = new ArrayList<>();
-	private int loopDepth = 0;
 	private final int INTERVAL = 1024;
+
+	private List<List<Character>> looper = new ArrayList<>();
+	private int loopDepth = -1;
 
 	public static final String ADDRESS_ERROR = "address error";
 
@@ -67,9 +73,8 @@ class BrainFcker {
 
 	public BrainFcker(){
 		this.addMemory();
-		for(int i=0; i<256; i++){
+		for(int i=0; i<256; i++)
 			looper.add(new ArrayList<Character>());
-		}
 	}
 
 	private void addMemory(){ /*{{{*/
@@ -78,48 +83,56 @@ class BrainFcker {
 	} /*}}}*/
 	public void execute(char operator) throws IllegalArgumentException { /*{{{*/
 		try{
-			if(this.loopDepth > 0)
-				looper.get(this.loopDepth-1).add(operator);
+			System.out.print(operator);
+			if(loopDepth > -1)
+				looper.get(loopDepth).add(operator);
 
 			switch(operator){
-				case '>':
-					if(++this.pointer >= memory.size()){
-						--this.pointer;
-						throw new ArrayIndexOutOfBoundsException();
-					}
-					break;
-				case '<':
-					if(--this.pointer < 0){
-						throw new IllegalArgumentException(ADDRESS_ERROR);
-					}
-					break;
-				case '+':
-					memory.set(this.pointer,
-							(byte)(memory.get(this.pointer) + 1));
-					break;
-				case '-':
-					memory.set(this.pointer,
-							(byte)(memory.get(this.pointer) - 1));
-					break;
-				case '[':
-					this.loopDepth++;
-					break;
-				case ']':
-					this.loopDepth--;
-					for(char op : looper.get(this.loopDepth))
+			case '>':
+				if(++this.pointer >= memory.size()){
+					--this.pointer;
+					throw new ArrayIndexOutOfBoundsException();
+				}
+				break;
+			case '<':
+				if(--this.pointer < 0){
+					throw new IllegalArgumentException(ADDRESS_ERROR);
+				}
+				break;
+			case '+':
+				memory.set(this.pointer,
+						(byte)(memory.get(this.pointer) + 1));
+				break;
+			case '-':
+				memory.set(this.pointer,
+						(byte)(memory.get(this.pointer) - 1));
+				break;
+			case '[':
+				++this.loopDepth;
+				break;
+			case ']':
+				List<Character> recent = looper.get(this.loopDepth);
+				recent.remove(recent.size()-1);
+				Character[] loop = (Character[])recent.toArray(new Character[0]);
+				--this.loopDepth;
+				while(memory.get(this.pointer) != 0)
+					for(char op : loop)
 						this.execute(op);
-					looper.get(this.loopDepth).clear();
-					break;
-				case '.':
-					System.out.print(
-							(char)(
-								0|memory.get(this.pointer))
-							);
-					break;
+				break;
+			case '.':
+				System.out.print(
+						(char)(
+							0|memory.get(this.pointer))
+						);
+				break;
 			}
 		}catch(ArrayIndexOutOfBoundsException over){
 			this.addMemory();
 			this.execute(operator);
 		}
+
+		//System.out.println(operator + ": " + this.pointer + "| " +
+		//				(char)(0|memory.get(this.pointer)) +
+		//				"(" + memory.get(this.pointer) + ")");
 	} /*}}}*/
 }
